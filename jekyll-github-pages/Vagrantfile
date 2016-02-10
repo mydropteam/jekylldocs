@@ -1,0 +1,109 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+
+VAGRANTFILE_API_VERSION = "2"
+Vagrant.require_version ">= 1.6"
+
+# We need vagrant-vbguest.
+# Otherwise you lose your Vagrant mounts after kernel upgrades in your virtualbox
+# or upgrades of vagrant.
+unless Vagrant.has_plugin?("vagrant-vbguest")
+  puts "--- WARNING ---"
+  puts "We need the vagrant plugin: vagrant-vbguest"
+  puts "Please install it in your system by typing:"
+  puts "vagrant plugin install vagrant-vbguest"
+  raise 'vagrant-vbguest not installed.'
+end
+
+unless Vagrant.has_plugin?("vagrant-triggers")
+  puts "--- WARNING ---"
+  puts "We need the vagrant plugin: vagrant-triggers"
+  puts "Please install it in your system by typing:"
+  puts "vagrant plugin install vagrant-triggers"
+  raise 'vagrant-triggers not installed.'
+end
+
+##
+# VARIABLES----------------------------------------------------------------------
+##
+
+# Set the default provider to docker.
+ENV['VAGRANT_DEFAULT_PROVIDER'] = "docker"
+
+# Use config.yaml for basic VM configuration.
+require 'yaml'
+if !File.exist?('./config.yaml')
+  raise 'Configuration file not found! Please copy example.config.yaml to config.yaml and try again.'
+end
+vconfig = YAML::load_file("./config.yaml")
+
+## Project variables.
+
+project_id          = vconfig['project']['code']
+current_path        = Dir.pwd
+parent_path         = File.dirname(File.expand_path('..', __FILE__))
+site_path           = "#{parent_path}/jekyll/site"
+
+## Environment variables.
+
+# Vagrant
+vagrant_hostname = vconfig['project']['code']
+vagrant_ip       = vconfig['vagrant']['ip']
+
+# Prevent the user from starting the box as root on Linux/MAC.
+host_os = RbConfig::CONFIG['host_os']
+  case host_os
+  when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
+    # WINDOWS
+    puts "Windows host detected."
+  when /linux|darwin|mac os/
+    # LINUX or MAC OS
+    puts "Linux or MAC host detected."
+    raise 'You cannot start the box as root on Linux/MAC or it will mess with apache permissions in the web containers! Please use another user.' unless Process.uid != 0
+  else
+    raise Error::WebDriverError, "unknown os: #{host_os.inspect}"
+  end
+
+# Show used vars
+
+puts '___  ____ ____ ___  ___ ____ ____ _  _'
+puts '|  \ |__/ |  | |__]  |  |___ |__| |\/|'
+puts '|__/ |  \ |__| |     |  |___ |  | |  |'
+puts ''
+puts ' _ ____ _  _ _   _ _    _    ___  ____ _  _ '
+puts ' | |___ |_/   \_/  |    |    |__] |  |  \/  '
+puts '_| |___ | \_   |   |___ |___ |__] |__| _/\__'
+puts ''
+puts "==> Deploying environment for the project #{project_id}."
+puts "==> the absolute path of the site_folder on your machine:"
+puts "    #{site_path}"
+
+# Container_config -------------------------------------------------------------
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  # enable private access to the machine via a static ip address
+  config.vm.network :private_network, ip: "#{vagrant_ip}"
+
+  # jekyll container.
+  config.vm.define "#{project_id}_jekyll" do |jekyll|
+
+    jekyll.vm.provider "docker" do |d|
+      d.build_dir = "./docker"
+
+      d.name = "#{project_id}_jekyll"
+      d.build_args = ["-t=#{project_id}_jekyll"]
+      d.remains_running = true
+
+      d.ports = ["80:80"]
+      d.ports = ["4010:4000"]
+      
+      d.volumes = ["#{site_path}:/srv/jekyll"]
+
+      d.vagrant_machine = "#{vagrant_hostname}"
+    end
+  end
+
+end

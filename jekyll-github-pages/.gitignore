@@ -1,0 +1,4 @@
+# Ignore paths that contain the hidden vagrant-folder.
+.vagrant
+.vagrant/*
+*~

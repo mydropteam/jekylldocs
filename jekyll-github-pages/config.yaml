@@ -1,0 +1,19 @@
+---
+## Project variables.
+
+project:
+  # The project code is used to name containers, create the user and database, define vhost URL, and so on.
+  # DO NOT use capital letters.
+  code: jekylldocs
+
+# ---------------------------------------------------------------------------- #
+# ------------YOU SHOULD NOT CHANGE ANYTHING UNDER THIS LINE------------------ #
+# ---------------------------------------------------------------------------- #
+
+## Environment variables.
+
+# Vagrant Virtualbox parameters if you are on Windows or Mac. You need at least 2816 for memory.
+vagrant:
+  ip: 192.168.22.33
+  memory: 3072
+  cpus: 2
